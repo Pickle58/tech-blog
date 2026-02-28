@@ -16,7 +16,7 @@ export default function Home() {
           <div className="relative">
             <Image
               src="/images/about.png"
-              alt="abou-image"
+              alt="About TechBlog"
               width={600}
               height={600}
               className="rounded-2xl border border-white/10"
