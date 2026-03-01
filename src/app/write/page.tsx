@@ -121,13 +121,17 @@ export default function WritePage() {
             <h1 className="mb-10 text-3xl font-bold text-white">Write a new article</h1>
 
             <form>
+                <label htmlFor="article-title" className="sr-only">Article title</label>
                 <input
+                    id="article-title"
                     type="text"
                     placeholder="Article title"
                     className="mb-6 w-full bg-transparent text-4xl text-white placeholder-gray-500 outline-none"
                 />
 
+                <label htmlFor="article-excerpt" className="sr-only">Article excerpt</label>
                 <textarea
+                    id="article-excerpt"
                     placeholder="Write a short excerpt (1-2 sentences)"
                     rows={3}
                     className="mb-8 w-full resize-none rounded-xl border border-white/10 bg-secondary-background p-4 text-gray-200 outline-none placeholder-gray-500 focus:border-indigo-500/50"
