@@ -48,7 +48,7 @@ export default function SignInModal() {
                 bg-black text-white font-medium
                 hover:bg-gray-800 transition'>
                     <FaGithub className='text-xl' />
-                    Continue with Github
+                    Continue with GitHub
                 </button>
             </div>
             <p className='text-xs text-gray-500 mt-8 text-center'>By continuing, you agree to our Terms of Service and Privacy Policy.</p>
