@@ -146,7 +146,7 @@ export default function WritePage() {
                     />
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-secondary-background">
+                <div className="rounded-2xl border border-white/10 bg-secondary-background mb-10">
                     <EditorToolbar editor={editor} />
                     <div className="px-4 pb-4 pt-3">
                         <EditorContent editor={editor} />
@@ -154,6 +154,12 @@ export default function WritePage() {
                 </div>
 
                 <input type="hidden" name="content" value={content} />
+
+                <div className="flex justify-end">
+                    <button className="px-6 py-3 rounded-full bg-primary cursor-pointer text-white font-semibold transition-colors hover:bg-indigo-500">
+                    Publish
+                </button>
+                </div>
             </form>
         </section>
     )
