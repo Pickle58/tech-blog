@@ -1,6 +1,6 @@
 "use client";
 
-import PostCardSkeleton from "@/components/skeletons/PostViewSkeleton";
+import PostCardSkeleton from "@/components/skeletons/PostCardSkeleton";
 import { useInfinitePosts } from "@/custom-hooks/usePost";
 import ContainerLayout from "@/layouts/ContainerLayout";
 import Image from "next/image";
@@ -53,6 +53,7 @@ export default function ArticlesPage() {
                   alt={post.title}
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                   fill
+                  sizes="(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 33vw"
                 />
                   <div className="absolute inset-0 bg-black/30" />
                 </div>

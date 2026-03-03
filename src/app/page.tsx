@@ -4,7 +4,7 @@ import Link from "next/link";
 import { LuArrowRight } from "react-icons/lu";
 import RecentPosts from "@/components/home/RecentPosts";
 import { Suspense } from "react";
-import PostCardSkeleton from "@/components/skeletons/PostViewSkeleton";
+import PostCardSkeleton from "@/components/skeletons/PostCardSkeleton";
 
 export default function Home() {
   return (
