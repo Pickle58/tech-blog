@@ -1,15 +1,24 @@
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
-import { CloudinaryUploadResult, uploadToCloudinary } from "@/services/cloudinary";
+import {
+    CloudinaryUploadResult,
+    deleteFromCloudinary,
+    uploadToCloudinary,
+} from "@/services/cloudinary";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import slugify from "slugify";
 
 const MAX_COVER_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_SLUG_RETRIES = 20;
+const DEFAULT_COVER_IMAGE_URL = "/images/p1.png";
 
 
 export async function POST(req: Request) {
+    let uploadedImagePublicId: string | null = null;
+    let postCreated = false;
+
     try {
         const session = await auth.api.getSession(
             { headers: await headers() },
@@ -49,17 +58,18 @@ export async function POST(req: Request) {
         }
 
         const coverImageValue = formData.get("coverImage");
-        if (!(coverImageValue instanceof File)) {
-            return NextResponse.json({ error: "Cover image must be a file" }, { status: 400 });
-        }
-        if (!coverImageValue.type || !coverImageValue.type.startsWith("image/")) {
-            return NextResponse.json({ error: "Cover image must be an image MIME type" }, { status: 400 });
-        }
-        if (coverImageValue.size > MAX_COVER_IMAGE_SIZE_BYTES) {
-            return NextResponse.json({ error: "Cover image exceeds 5MB limit" }, { status: 400 });
-        }
 
-        const coverImage = coverImageValue;
+        let coverImageURL = DEFAULT_COVER_IMAGE_URL;
+        let coverImagePublicId = "";
+
+        if (coverImageValue instanceof File && coverImageValue.size > 0) {
+            if (!coverImageValue.type || !coverImageValue.type.startsWith("image/")) {
+                return NextResponse.json({ error: "Cover image must be an image MIME type" }, { status: 400 });
+            }
+            if (coverImageValue.size > MAX_COVER_IMAGE_SIZE_BYTES) {
+                return NextResponse.json({ error: "Cover image exceeds 5MB limit" }, { status: 400 });
+            }
+        }
 
         // generate the slug from the title
         const baseSlug = slugify(title, {
@@ -68,10 +78,22 @@ export async function POST(req: Request) {
             trim: true,
         });
 
+        if (!baseSlug) {
+            return NextResponse.json(
+                { error: "Title must contain letters or numbers to generate a valid slug" },
+                { status: 400 }
+            );
+        }
+
         let slug = baseSlug;
         let counter = 0;
 
-        const imageData: CloudinaryUploadResult = await uploadToCloudinary(coverImage);
+        if (coverImageValue instanceof File && coverImageValue.size > 0) {
+            const imageData: CloudinaryUploadResult = await uploadToCloudinary(coverImageValue);
+            uploadedImagePublicId = imageData.public_id;
+            coverImageURL = imageData.secure_url;
+            coverImagePublicId = imageData.public_id;
+        }
 
         let post;
 
@@ -85,18 +107,38 @@ export async function POST(req: Request) {
                         content,
                         excerpt,
                         slug,
-                        coverImageURL: imageData.secure_url,
-                        coverImagePublicId: imageData.public_id,
+                        coverImageURL,
+                        coverImagePublicId,
                         authorId: session.user.id,
                     }
                 });
 
+                postCreated = true;
+
                 break;
             } catch (error) {
-                if (
-                    error instanceof Prisma.PrismaClientKnownRequestError &&
-                    error.code === "P2002"
-                ) {
+                if (error instanceof Prisma.PrismaClientKnownRequestError) {
+                    if (error.code !== "P2002") {
+                        throw error;
+                    }
+
+                    const target = error.meta?.target;
+                    const targetValues = Array.isArray(target)
+                        ? target.map((value) => String(value).toLowerCase())
+                        : typeof target === "string"
+                            ? [target.toLowerCase()]
+                            : [];
+
+                    const isSlugConstraint = targetValues.some((value) => value.includes("slug"));
+
+                    if (!isSlugConstraint) {
+                        throw error;
+                    }
+
+                    if (counter >= MAX_SLUG_RETRIES) {
+                        throw new Error("SLUG_RETRY_LIMIT_REACHED");
+                    }
+
                     counter++;
                     continue;
                 }
@@ -107,6 +149,17 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ post }, { status: 201 });
     } catch (error) {
+        if (uploadedImagePublicId && !postCreated) {
+            await deleteFromCloudinary(uploadedImagePublicId);
+        }
+
+        if (error instanceof Error && error.message === "SLUG_RETRY_LIMIT_REACHED") {
+            return NextResponse.json(
+                { error: "Unable to generate a unique slug for this title. Please update the title and try again." },
+                { status: 409 }
+            );
+        }
+
         console.error("CREATE_POST_ERROR:", error);
         return NextResponse.json(
             { error: "Failed to create post" },
@@ -122,12 +175,6 @@ export async function GET(req: Request) {
         const DEFAULT_LIMIT = 3;
 
         const cursor = searchParams.get("cursor");
-        const [cursorCreatedAtRaw, cursorId] = cursor ? cursor.split("|") : [];
-        const cursorCreatedAt = cursorCreatedAtRaw ? new Date(cursorCreatedAtRaw) : null;
-
-        if (cursor && (!cursorId || !cursorCreatedAt || Number.isNaN(cursorCreatedAt.getTime()))) {
-            return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
-        }
 
         const limit = Number(searchParams.get("limit")) || DEFAULT_LIMIT;
 
@@ -140,8 +187,7 @@ export async function GET(req: Request) {
             ],
             cursor: cursor
                 ? {
-                    createdAt: cursorCreatedAt!,
-                    id: cursorId!,
+                    id: cursor,
                 }
                 : undefined,
 
@@ -162,9 +208,7 @@ export async function GET(req: Request) {
             const hasMore = posts.length > limit;
 
             const items =hasMore ? posts.slice(0, limit) : posts; // remove the extra item if it exists
-            const nextCursor = hasMore
-                ? `${items[items.length - 1].createdAt.toISOString()}|${items[items.length - 1].id}`
-                : null; // set the next cursor if there's a next page
+            const nextCursor = hasMore ? items[items.length - 1].id : null; // set the next cursor if there's a next page
         return NextResponse.json({
             posts: items,
            nextCursor,

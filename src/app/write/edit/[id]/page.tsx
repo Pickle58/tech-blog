@@ -1,17 +1,24 @@
 "use client";
 
 import axios from "axios";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import { useParams, useRouter } from "next/navigation";
 
-export default function WritePage() {
+export default function EditPostPage() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const postId = params.id;
+
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [currentCoverImageURL, setCurrentCoverImageURL] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const editor = useEditor({
@@ -44,6 +51,44 @@ export default function WritePage() {
         : "bg-transparent border-white/10 text-gray-300 hover:border-white/20 hover:text-white"
     } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`;
 
+  useEffect(() => {
+    async function fetchPost() {
+      try {
+        const res = await axios.get(`/api/posts/${postId}`);
+        const post = res.data.post;
+
+        setTitle(post.title);
+        setExcerpt(post.excerpt);
+        setCurrentCoverImageURL(post.coverImageURL);
+        setContent(post.content);
+
+        if (editor) {
+          editor.commands.setContent(post.content);
+        }
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          toast(error.response?.data?.error || "Failed to load post", {
+            style: { color: "white", background: "#1e3a8a" },
+          });
+        } else {
+          toast("Failed to load post", {
+            style: { color: "white", background: "#1e3a8a" },
+          });
+        }
+
+        router.push("/articles");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (!postId || !editor) {
+      return;
+    }
+
+    void fetchPost();
+  }, [editor, postId, router]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -66,26 +111,22 @@ export default function WritePage() {
         formData.append("coverImage", coverImage);
       }
 
-      await axios.post("/api/posts", formData, {
+      const response = await axios.patch(`/api/posts/${postId}`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      setTitle("");
-      setExcerpt("");
-      setCoverImage(null);
-      setContent("");
-      editor?.commands.clearContent();
-
-      toast("Article published successfully", {
+      toast("Article updated successfully", {
         style: { color: "white", background: "#1e3a8a" },
       });
+
+      router.push(`/articles/${response.data.post.slug}`);
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        toast(error.response?.data?.error || "Failed to publish article", {
+        toast(error.response?.data?.error || "Failed to update article", {
           style: { color: "white", background: "#1e3a8a" },
         });
       } else {
-        toast("Failed to publish article", {
+        toast("Failed to update article", {
           style: { color: "white", background: "#1e3a8a" },
         });
       }
@@ -94,9 +135,17 @@ export default function WritePage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <section className="max-w-3xl mx-auto py-20 px-6">
+        <p className="text-gray-300">Loading post...</p>
+      </section>
+    );
+  }
+
   return (
     <section className="max-w-3xl mx-auto py-20 px-6">
-      <h1 className="text-3xl font-bold text-white mb-10">Write a new article</h1>
+      <h1 className="text-3xl font-bold text-white mb-10">Edit article</h1>
 
       <form onSubmit={handleSubmit}>
         <input
@@ -115,7 +164,7 @@ export default function WritePage() {
           className="w-full bg-secondary-background text-gray-200 placeholder-gray-500 rounded-xl p-4 mb-8 outline-none resize-none border border-white/10 focus:border-indigo-500/50"
         />
 
-        <div className="mb-10">
+        <div className="mb-4">
           <label className="block text-gray-400 mb-2">Cover Image (optional)</label>
           <input
             onChange={(e) => setCoverImage(e.target.files?.[0] || null)}
@@ -124,6 +173,10 @@ export default function WritePage() {
             className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-primary file:text-white hover:file:bg-indigo-500"
           />
         </div>
+
+        {currentCoverImageURL && (
+          <p className="text-xs text-gray-500 mb-8">Current cover image will be kept unless you select a new file.</p>
+        )}
 
         <div className="rounded-2xl overflow-hidden border border-white/10 mb-10 bg-secondary-background p-4">
           <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3 mb-4">
@@ -271,7 +324,7 @@ export default function WritePage() {
             disabled={isSubmitting}
             className="px-6 py-3 rounded-full bg-primary cursor-pointer text-white font-semibold transition-colors hover:bg-indigo-500 disabled:opacity-60"
           >
-            {isSubmitting ? "Publishing..." : "Publish"}
+            {isSubmitting ? "Saving..." : "Save changes"}
           </button>
         </div>
       </form>
