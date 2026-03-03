@@ -66,6 +66,7 @@ export default async function BlogView({ postPromise }: BlogViewProps) {
                                 src={post.author.image}
                                 alt={post.author.name}
                                 fill
+                                sizes="40px"
                                 className='object-cover'
                             />
                         </div>
@@ -90,7 +91,7 @@ export default async function BlogView({ postPromise }: BlogViewProps) {
             </div>
             <div className='border border-white/10 my-16' />
 
-            <BlogAuthorActions authorId={post.author.id} />
+            <BlogAuthorActions authorId={post.author.id} postId={post.id} />
 
             <div className='mt-16'>
                 <Link
