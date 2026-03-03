@@ -7,6 +7,12 @@
   --color-hover: #181818;
 }
 
+.blog-post h2 {
+  color: white !important;
+  font-size: 1.5rem !important;
+  font-weight: bold;
+}
+
 .tiptap-editor {
   min-height: 320px;
   color: #f3f4f6;
