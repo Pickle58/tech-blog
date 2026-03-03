@@ -2,7 +2,9 @@ import ContainerLayout from "@/layouts/ContainerLayout";
 import Image from "next/image";
 import Link from "next/link";
 import { LuArrowRight } from "react-icons/lu";
-import RecentPosts from "./components/home/RecentPosts";
+import RecentPosts from "@/components/home/RecentPosts";
+import { Suspense } from "react";
+import PostCardSkeleton from "@/components/skeletons/PostViewSkeleton";
 
 export default function Home() {
   return (
@@ -45,7 +47,9 @@ export default function Home() {
           </div>
         </div>
       </div>
-      <RecentPosts />
+      <Suspense fallback={<PostCardSkeleton />}>
+        <RecentPosts />
+      </Suspense>
     </ContainerLayout>
   );
 }
