@@ -1,166 +1,131 @@
-"use client"
-import { useState } from "react"
-import { Editor, EditorContent, useEditor } from "@tiptap/react"
-import StarterKit from "@tiptap/starter-kit"
-import Placeholder from "@tiptap/extension-placeholder"
+"use client";
 
-type ToolbarButton = {
-    label: string
-    action: () => void
-    isActive: boolean
-}
-
-function EditorToolbar({ editor }: { editor: Editor | null }) {
-    if (!editor) return null
-
-    const buttons: ToolbarButton[] = [
-        {
-            label: "H1",
-            action: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
-            isActive: editor.isActive("heading", { level: 1 }),
-        },
-        {
-            label: "H2",
-            action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
-            isActive: editor.isActive("heading", { level: 2 }),
-        },
-        {
-            label: "H3",
-            action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
-            isActive: editor.isActive("heading", { level: 3 }),
-        },
-        {
-            label: "Bold",
-            action: () => editor.chain().focus().toggleBold().run(),
-            isActive: editor.isActive("bold"),
-        },
-        {
-            label: "Italic",
-            action: () => editor.chain().focus().toggleItalic().run(),
-            isActive: editor.isActive("italic"),
-        },
-        {
-            label: "Strike",
-            action: () => editor.chain().focus().toggleStrike().run(),
-            isActive: editor.isActive("strike"),
-        },
-        {
-            label: "Quote",
-            action: () => editor.chain().focus().toggleBlockquote().run(),
-            isActive: editor.isActive("blockquote"),
-        },
-        {
-            label: "Code",
-            action: () => editor.chain().focus().toggleCodeBlock().run(),
-            isActive: editor.isActive("codeBlock"),
-        },
-        {
-            label: "OL",
-            action: () => editor.chain().focus().toggleOrderedList().run(),
-            isActive: editor.isActive("orderedList"),
-        },
-        {
-            label: "UL",
-            action: () => editor.chain().focus().toggleBulletList().run(),
-            isActive: editor.isActive("bulletList"),
-        },
-    ]
-
-    return (
-        <div className="flex flex-wrap gap-2 border-b border-white/10 bg-hover px-4 py-2 text-sm">
-            {buttons.map((button) => (
-                <button
-                    key={button.label}
-                    type="button"
-                    onClick={button.action}
-                    className={`rounded-md border border-white/10 px-3 py-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 ${
-                        button.isActive
-                            ? "bg-white/20 text-white"
-                            : "text-gray-300 hover:bg-white/5"
-                    }`}
-                >
-                    {button.label}
-                </button>
-            ))}
-        </div>
-    )
-}
+import axios from "axios";
+import { useState } from "react";
+import toast from "react-hot-toast";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Placeholder from "@tiptap/extension-placeholder";
 
 export default function WritePage() {
-    const [content, setContent] = useState("")
+  const [content, setContent] = useState("");
+  const [title, setTitle] = useState("");
+  const [excerpt, setExcerpt] = useState("");
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const editor = useEditor({
-        extensions: [
-            StarterKit.configure({
-                heading: {
-                    levels: [1, 2, 3],
-                },
-                codeBlock: {
-                    HTMLAttributes: {
-                        class: "bg-black/40 rounded-lg px-4 py-3 font-mono text-sm",
-                    },
-                },
-            }),
-            Placeholder.configure({
-                placeholder: "Start writing your article here...",
-            }),
-        ],
-        editorProps: {
-            attributes: {
-                class: "tiptap-editor",
-            },
-        },
-        onUpdate: ({ editor }) => {
-            setContent(editor.getHTML())
-        },
-        immediatelyRender: false,
-    })
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Placeholder.configure({
+        placeholder: "Start writing your article...",
+      }),
+    ],
+    content: "",
+    editorProps: {
+      attributes: {
+        class:
+          "min-h-[240px] w-full bg-transparent text-gray-200 outline-none prose prose-invert max-w-none",
+      },
+    },
+    onUpdate: ({ editor }) => {
+      setContent(editor.getHTML());
+    },
+    immediatelyRender: false,
+  });
 
-    return (
-        <section className="max-w-2xl mx-auto py-20 px-6">
-            <h1 className="mb-10 text-3xl font-bold text-white">Write a new article</h1>
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-            <form>
-                <label htmlFor="article-title" className="sr-only">Article title</label>
-                <input
-                    id="article-title"
-                    type="text"
-                    placeholder="Article title"
-                    className="mb-6 w-full bg-transparent text-4xl text-white placeholder-gray-500 outline-none"
-                />
+    try {
+      if (!title || !coverImage || !excerpt || !content || content === "<p></p>") {
+        toast("All fields are required!", {
+          style: { color: "white", background: "#1e3a8a" },
+        });
+        return;
+      }
 
-                <label htmlFor="article-excerpt" className="sr-only">Article excerpt</label>
-                <textarea
-                    id="article-excerpt"
-                    placeholder="Write a short excerpt (1-2 sentences)"
-                    rows={3}
-                    className="mb-8 w-full resize-none rounded-xl border border-white/10 bg-secondary-background p-4 text-gray-200 outline-none placeholder-gray-500 focus:border-indigo-500/50"
-                />
+      setIsSubmitting(true);
 
-                <div className="mb-10">
-                    <label className="mb-2 block text-gray-400">Upload a cover image</label>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        className="block w-full text-sm text-gray-400 file:mr-4 file:rounded-full file:border-0 file:bg-primary file:px-4 file:py-2 file:text-white hover:file:bg-indigo-500"
-                    />
-                </div>
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("excerpt", excerpt);
+      formData.append("content", content);
+      formData.append("coverImage", coverImage);
 
-                <div className="rounded-2xl border border-white/10 bg-secondary-background mb-10">
-                    <EditorToolbar editor={editor} />
-                    <div className="px-4 pb-4 pt-3">
-                        <EditorContent editor={editor} />
-                    </div>
-                </div>
+      await axios.post("/api/posts", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
-                <input type="hidden" name="content" value={content} />
+      setTitle("");
+      setExcerpt("");
+      setCoverImage(null);
+      setContent("");
+      editor?.commands.clearContent();
 
-                <div className="flex justify-end">
-                    <button className="px-6 py-3 rounded-full bg-primary cursor-pointer text-white font-semibold transition-colors hover:bg-indigo-500">
-                    Publish
-                </button>
-                </div>
-            </form>
-        </section>
-    )
+      toast("Article published successfully", {
+        style: { color: "white", background: "#1e3a8a" },
+      });
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        toast(error.response?.data?.error || "Failed to publish article", {
+          style: { color: "white", background: "#1e3a8a" },
+        });
+      } else {
+        toast("Failed to publish article", {
+          style: { color: "white", background: "#1e3a8a" },
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="max-w-3xl mx-auto py-20 px-6">
+      <h1 className="text-3xl font-bold text-white mb-10">Write a new article</h1>
+
+      <form onSubmit={handleSubmit}>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          type="text"
+          placeholder="Article title"
+          className="w-full bg-transparent text-4xl font-bold text-white placeholder-gray-500 outline-none mb-6"
+        />
+
+        <textarea
+          value={excerpt}
+          onChange={(e) => setExcerpt(e.target.value)}
+          placeholder="Write a short excerpt (1–2 sentences)"
+          rows={3}
+          className="w-full bg-secondary-background text-gray-200 placeholder-gray-500 rounded-xl p-4 mb-8 outline-none resize-none border border-white/10 focus:border-indigo-500/50"
+        />
+
+        <div className="mb-10">
+          <label className="block text-gray-400 mb-2">Cover Image</label>
+          <input
+            onChange={(e) => setCoverImage(e.target.files?.[0] || null)}
+            type="file"
+            accept="image/*"
+            className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-primary file:text-white hover:file:bg-indigo-500"
+          />
+        </div>
+
+        <div className="rounded-2xl overflow-hidden border border-white/10 mb-10 bg-secondary-background p-4">
+          <EditorContent editor={editor} />
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-6 py-3 rounded-full bg-primary cursor-pointer text-white font-semibold transition-colors hover:bg-indigo-500 disabled:opacity-60"
+          >
+            {isSubmitting ? "Publishing..." : "Publish"}
+          </button>
+        </div>
+      </form>
+    </section>
+  );
 }

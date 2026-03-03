@@ -1,77 +1,19 @@
-import Image from 'next/image'
-import Link from 'next/link'
-import React from 'react'
-import { LuPen, LuTrash } from 'react-icons/lu'
+import BlogView from "@/components/blog-page/BlogView";
+import PostViewSkeleton from "@/components/skeletons/PostViewSkeleton";
+import { getPostBySlug } from "@/server-actions/getPost";
+import { Suspense } from "react";
 
-export default function PostViewPage() {
-    return (
-        <article className='max-w-3xl mx-auto py-20 px-6'>
-            {/* article header */}
-            <header className='mb-10'>
-                <h1 className='text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-4'>
-                    Building a Medium-Style Blog with Next.js
-                </h1>
+export default async function PostViewPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
 
-                <div className='flex items-center gap-4 text-sm text-gray-400'>
-                    <span>By James Pilkington</span>
-                    <span>•</span>
-                    <span>June 15, 2026</span>
-                </div>
-            </header>
-
-            <div className='relative w-full h-55 sm:h-80 lg:h-105 mb-12'>
-                <Image src="/images/p1.png" alt="article-image" fill className='rounded-2xl object-cover' />
-            </div>
-
-            {/* article content */}
-            <div className='max-w-none text-gray-400 leading-relaxed tracking-wide'>
-                <p className='mb-6'>
-                    Lorem ipsum dolor sit amet consectetur adipisicing elit. Incidunt modi nulla eos ratione, dolor nesciunt impedit autem, exercitationem enim nostrum sunt. Totam optio animi omnis.
-                </p>
-                <p className='mb-6'>
-                    Lorem ipsum dolor sit amet consectetur adipisicing elit. Incidunt modi nulla eos ratione, dolor nesciunt impedit autem, exercitationem enim nostrum sunt. Totam optio animi omnis.
-                </p>
-                <p className='mb-6'>
-                    Lorem ipsum dolor sit amet consectetur adipisicing elit. Incidunt modi nulla eos ratione, dolor nesciunt impedit autem, exercitationem enim nostrum sunt. Totam optio animi omnis.
-                </p>
-            </div>
-            <div className='border border-white/10 my-16' />
-            <div className='flex items-center justify-end gap-2'>
-                <Link href="#"
-                    className=" inline-flex items-center gap-2
-                px-3 py-1.5 rounded-full
-                text-sm font-medium
-                text-indigo-400
-                border border-indigo-400/20
-                hover:border-indigo-400/40
-                hover:bg-indigo-400/10
-                transition">
-                    <LuPen size={15} />
-                    Edit
-                </Link>
-                <button type='button'
-                    className="inline-flex items-center gap-2
-                px-3 py-1.5 rounded-full
-                text-sm font-medium
-                text-red-400
-                border border-red-400/20
-                hover:border-red-400/40
-                hover:bg-red-400/10
-                transition cursor-pointer
-                disabled:cursor-not-allowed">
-                    <LuTrash size={15} />
-                    Delete
-                </button>
-            </div>
-
-            <div className='mt-16'>
-                <Link
-                    href="/articles"
-                    className="text-indigo-400 hover:text-indigo-300 transition-colors"
-                >
-                    ← Back to all articles
-                </Link>
-            </div>
-        </article>
-    )
+  const slug = (await params).slug;
+  const postPromise = getPostBySlug(slug);
+  return (
+    <Suspense fallback={ <PostViewSkeleton/> }>
+      <BlogView postPromise={postPromise}/>
+    </Suspense>
+  )
 }
