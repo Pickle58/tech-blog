@@ -66,21 +66,24 @@ export async function PATCH(
 
     const { id } = await params;
 
-    const existingPost = await prisma.post.findUnique({
-      where: { id },
+    const existingOwnedPost = await prisma.post.findFirst({
+      where: { id, authorId: session.user.id },
       select: {
         id: true,
-        authorId: true,
         coverImagePublicId: true,
       },
     });
 
-    if (!existingPost) {
-      return NextResponse.json({ error: "Post not found" }, { status: 404 });
-    }
+    if (!existingOwnedPost) {
+      const postExists = await prisma.post.findUnique({
+        where: { id },
+        select: { id: true },
+      });
 
-    if (existingPost.authorId !== session.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json(
+        { error: postExists ? "Forbidden" : "Post not found" },
+        { status: postExists ? 403 : 404 }
+      );
     }
 
     const formData = await req.formData();
@@ -134,13 +137,13 @@ export async function PATCH(
 
       const imageData: CloudinaryUploadResult = await uploadToCloudinary(coverImageValue);
       newUploadedImagePublicId = imageData.public_id;
-      oldImagePublicIdToDelete = existingPost.coverImagePublicId;
+      oldImagePublicIdToDelete = existingOwnedPost.coverImagePublicId;
       nextCoverImageURL = imageData.secure_url;
       nextCoverImagePublicId = imageData.public_id;
     }
 
-    const post = await prisma.post.update({
-      where: { id },
+    const updated = await prisma.post.updateMany({
+      where: { id, authorId: session.user.id },
       data: {
         title,
         excerpt,
@@ -150,11 +153,35 @@ export async function PATCH(
           coverImagePublicId: nextCoverImagePublicId,
         }),
       },
+    });
+
+    if (updated.count === 0) {
+      if (newUploadedImagePublicId) {
+        await deleteFromCloudinary(newUploadedImagePublicId);
+      }
+
+      const postExists = await prisma.post.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+
+      return NextResponse.json(
+        { error: postExists ? "Forbidden" : "Post not found" },
+        { status: postExists ? 403 : 404 }
+      );
+    }
+
+    const post = await prisma.post.findUnique({
+      where: { id },
       select: {
         id: true,
         slug: true,
       },
     });
+
+    if (!post) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
 
     if (oldImagePublicIdToDelete) {
       await deleteFromCloudinary(oldImagePublicIdToDelete);
@@ -184,27 +211,44 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const existingPost = await prisma.post.findUnique({
-      where: { id },
+    const existingOwnedPost = await prisma.post.findFirst({
+      where: { id, authorId: session.user.id },
       select: {
         id: true,
-        authorId: true,
         coverImagePublicId: true,
       },
     });
 
-    if (!existingPost) {
-      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    if (!existingOwnedPost) {
+      const postExists = await prisma.post.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+
+      return NextResponse.json(
+        { error: postExists ? "Forbidden" : "Post not found" },
+        { status: postExists ? 403 : 404 }
+      );
     }
 
-    if (existingPost.authorId !== session.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const deleted = await prisma.post.deleteMany({
+      where: { id, authorId: session.user.id },
+    });
+
+    if (deleted.count === 0) {
+      const postExists = await prisma.post.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+
+      return NextResponse.json(
+        { error: postExists ? "Forbidden" : "Post not found" },
+        { status: postExists ? 403 : 404 }
+      );
     }
 
-    await prisma.post.delete({ where: { id } });
-
-    if (existingPost.coverImagePublicId) {
-      await deleteFromCloudinary(existingPost.coverImagePublicId);
+    if (existingOwnedPost.coverImagePublicId) {
+      await deleteFromCloudinary(existingOwnedPost.coverImagePublicId);
     }
 
     return NextResponse.json({ success: true }, { status: 200 });
