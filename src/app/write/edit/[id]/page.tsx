@@ -7,6 +7,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { useParams, useRouter } from "next/navigation";
+import EditPageSkeleton from "@/components/skeletons/EditPageSkeleton";
 
 export default function EditPostPage() {
   const params = useParams<{ id: string }>();
@@ -136,11 +137,7 @@ export default function EditPostPage() {
   };
 
   if (isLoading) {
-    return (
-      <section className="max-w-3xl mx-auto py-20 px-6">
-        <p className="text-gray-300">Loading post...</p>
-      </section>
-    );
+    return <EditPageSkeleton />;
   }
 
   return (
