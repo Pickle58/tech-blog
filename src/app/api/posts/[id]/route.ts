@@ -180,7 +180,18 @@ export async function PATCH(
     });
 
     if (!post) {
-      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+      if (newUploadedImagePublicId) {
+        await deleteFromCloudinary(newUploadedImagePublicId);
+      }
+
+      if (oldImagePublicIdToDelete) {
+        await deleteFromCloudinary(oldImagePublicIdToDelete);
+      }
+
+      return NextResponse.json(
+        { error: "Post was modified or deleted concurrently" },
+        { status: 409 }
+      );
     }
 
     if (oldImagePublicIdToDelete) {
