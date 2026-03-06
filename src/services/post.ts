@@ -1,4 +1,4 @@
-import { FetchPostsParams, FetchPostsResponse } from "@/types/post";
+import { FetchPostsParams, FetchPostsResponse, SearchPostResult } from "@/types/post";
 import axios from "axios";
 
 export async function fetchPosts({
@@ -15,10 +15,10 @@ export async function fetchPosts({
     return res.data;
 }
 
-export async function searchPosts(query: string) {
+export async function searchPosts(query: string): Promise<SearchPostResult[]> {
     if(!query) return [];
 
-    const res = await axios.get("/api/posts/search", {
+    const res = await axios.get<{ posts: SearchPostResult[] }>("/api/posts/search", {
         params: {
            q: query,
            limit: 5, 

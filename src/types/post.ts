@@ -18,6 +18,8 @@ export interface Post {
   author: PostAuthor;
 }
 
+export type SearchPostResult = Pick<Post, "id" | "slug" | "title">;
+
 export interface FetchPostsResponse {
   posts: Post[];
   nextCursor: string | null;
