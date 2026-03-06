@@ -14,3 +14,16 @@ export async function fetchPosts({
 
     return res.data;
 }
+
+export async function searchPosts(query: string) {
+    if(!query) return [];
+
+    const res = await axios.get("/api/posts/search", {
+        params: {
+           q: query,
+           limit: 5, 
+        }
+    });
+
+    return res.data.posts;
+}
