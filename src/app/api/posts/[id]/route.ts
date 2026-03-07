@@ -71,6 +71,7 @@ export async function PATCH(
       select: {
         id: true,
         coverImagePublicId: true,
+        updatedAt: true,
       },
     });
 
@@ -143,7 +144,11 @@ export async function PATCH(
     }
 
     const updated = await prisma.post.updateMany({
-      where: { id, authorId: session.user.id },
+      where: {
+        id,
+        authorId: session.user.id,
+        updatedAt: existingOwnedPost.updatedAt,
+      },
       data: {
         title,
         excerpt,
@@ -159,15 +164,9 @@ export async function PATCH(
       if (newUploadedImagePublicId) {
         await deleteFromCloudinary(newUploadedImagePublicId);
       }
-
-      const postExists = await prisma.post.findUnique({
-        where: { id },
-        select: { id: true },
-      });
-
       return NextResponse.json(
-        { error: postExists ? "Forbidden" : "Post not found" },
-        { status: postExists ? 403 : 404 }
+        { error: "Post was modified or deleted concurrently" },
+        { status: 409 }
       );
     }
 
