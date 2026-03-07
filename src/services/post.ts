@@ -16,11 +16,13 @@ export async function fetchPosts({
 }
 
 export async function searchPosts(query: string): Promise<SearchPostResult[]> {
-    if(!query) return [];
+    const q = query.trim();
+
+    if(!q) return [];
 
     const res = await axios.get<{ posts: SearchPostResult[] }>("/api/posts/search", {
         params: {
-           q: query,
+           q,
            limit: 5, 
         }
     });

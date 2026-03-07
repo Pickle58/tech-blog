@@ -16,11 +16,18 @@ export async function GET(req: Request) {
     let limit = DEFAULT_LIMIT;
 
     if (limitParam !== null) {
+      if (limitParam.trim() === "") {
+        return NextResponse.json(
+          { error: "limit must be a whole number" },
+          { status: 400 }
+        );
+      }
+
       const parsedLimit = Number(limitParam);
 
       if (!Number.isFinite(parsedLimit) || !Number.isInteger(parsedLimit)) {
         return NextResponse.json(
-          { error: "limit must be a whole number between 1 and 20" },
+          { error: "limit must be a whole number" },
           { status: 400 }
         );
       }
